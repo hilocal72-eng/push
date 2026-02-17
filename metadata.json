@@ -1,0 +1,8 @@
+
+{
+  "name": "PushNotify Tester",
+  "description": "A clean, modern application for testing browser notifications manually.",
+  "requestFramePermissions": [
+    "notifications"
+  ]
+}
