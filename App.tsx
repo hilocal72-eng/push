@@ -9,202 +9,224 @@ const App: React.FC = () => {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSecure, setIsSecure] = useState(true);
+  const [isSimulating, setIsSimulating] = useState(false);
   
-  const [customTitle, setCustomTitle] = useState('Deployment Test');
-  const [customBody, setCustomBody] = useState('Testing notifications on Cloudflare!');
+  const [title, setTitle] = useState('Push Lab Test 🚀');
+  const [body, setBody] = useState('Testing notifications on this mobile device.');
 
-  useEffect(() => {
-    // Check if the environment is secure (HTTPS or localhost)
-    const secure = window.isSecureContext;
-    setIsSecure(secure);
+  const checkStatus = async () => {
+    setIsSecure(window.isSecureContext);
     
-    if (!secure) {
-      setErrorMessage('Browser Notifications require a Secure Context (HTTPS).');
-    }
-
     if ('Notification' in window) {
       setPermission(Notification.permission as PermissionStatus);
     } else {
-      setErrorMessage('This browser does not support desktop notifications.');
+      setErrorMessage('Notifications are not supported on this browser.');
     }
 
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.ready.then(() => setSwActive(true));
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        setSwActive(!!reg);
+      } catch (err) {
+        setSwActive(false);
+      }
     }
+  };
+
+  useEffect(() => {
+    checkStatus();
+    const interval = setInterval(checkStatus, 3000);
+    return () => clearInterval(interval);
   }, []);
 
-  const addToHistory = (title: string, body: string) => {
+  const addToHistory = (title: string, body: string, method: string) => {
     const newItem: HistoryItem = {
       id: Math.random().toString(36).substr(2, 9),
       timestamp: new Date(),
       title,
       body,
-      type: 'local'
+      type: method as any
     };
-    setHistory(prev => [newItem, ...prev].slice(0, 10));
+    setHistory(prev => [newItem, ...prev].slice(0, 5));
   };
 
   const requestPermission = async () => {
     if (!('Notification' in window)) return;
-    if (!isSecure) {
-      setErrorMessage('Security Error: Use HTTPS or localhost to enable permissions.');
-      return;
-    }
-    
     try {
       const result = await Notification.requestPermission();
       setPermission(result as PermissionStatus);
     } catch (err) {
-      console.error('Permission request failed:', err);
-      setErrorMessage('Failed to request notification permissions.');
+      setErrorMessage('Permission request failed.');
     }
   };
 
-  const triggerNotification = async (title: string, body: string) => {
-    if (!isSecure) {
-      setErrorMessage('Security Error: Notifications are blocked on insecure origins.');
-      return;
-    }
-
+  const triggerNotification = async (delaySeconds: number = 0) => {
     if (permission !== 'granted') {
       setErrorMessage('Please grant notification permissions first.');
       return;
     }
 
-    try {
-      if ('serviceWorker' in navigator && swActive) {
-        const registration = await navigator.serviceWorker.ready;
-        await registration.showNotification(title, {
-          body: body,
-          icon: 'https://picsum.photos/128/128',
-          badge: 'https://picsum.photos/48/48',
-          tag: 'tester-' + Date.now()
-        });
-      } else {
-        new Notification(title, { body });
-      }
-
-      addToHistory(title, body);
-      setErrorMessage(null);
-    } catch (err) {
-      console.error('Notification trigger error:', err);
-      setErrorMessage('Notification failed. Your browser might be blocking this origin.');
+    if (delaySeconds > 0) {
+      setIsSimulating(true);
+      setTimeout(() => {
+        executeTrigger();
+        setIsSimulating(false);
+      }, delaySeconds * 1000);
+    } else {
+      executeTrigger();
     }
   };
 
-  const handleSendCustom = (e: React.FormEvent) => {
-    e.preventDefault();
-    triggerNotification(customTitle, customBody);
+  const executeTrigger = async () => {
+    try {
+      let method = 'Standard';
+      
+      // Attempt Service Worker first for better mobile background support
+      if ('serviceWorker' in navigator && swActive) {
+        const registration = await navigator.serviceWorker.ready;
+        await (registration as any).showNotification(title, {
+          body: body,
+          icon: 'https://picsum.photos/192/192?random=' + Math.random(),
+          badge: 'https://picsum.photos/96/96?random=' + Math.random(),
+          vibrate: [200, 100, 200],
+          tag: 'push-lab-test'
+        });
+        method = 'ServiceWorker';
+      } else {
+        // Fallback to standard web notification
+        new Notification(title, { 
+          body: body,
+          icon: 'https://picsum.photos/192/192?random=' + Math.random()
+        });
+      }
+      
+      addToHistory(title, body, method);
+      setErrorMessage(null);
+    } catch (err: any) {
+      setErrorMessage(`Trigger failed: ${err.message}`);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center py-12 px-4 font-sans">
-      <div className="max-w-md w-full">
-        <header className="text-center mb-8">
-          <div className="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-200">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center font-sans text-slate-900 pb-12">
+      <div className="w-full max-w-md px-6 pt-10">
+        
+        {/* MOBILE HEADER */}
+        <header className="mb-8 text-center">
+          <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-5 shadow-2xl shadow-blue-200">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
             </svg>
           </div>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Cloudflare Push Tester</h1>
-          <p className="mt-2 text-gray-500">Secure Context Testing Utility</p>
+          <h1 className="text-3xl font-black tracking-tight text-slate-900">Push Lab</h1>
+          <p className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.3em] mt-1">Direct Mobile Testing</p>
         </header>
 
-        {/* Security Alert */}
-        {!isSecure && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-800 text-sm">
-            <h4 className="font-bold flex items-center gap-2 mb-2">
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"/></svg>
-              Insecure Environment
-            </h4>
-            <p className="mb-2">Notifications are blocked because this origin is not secure.</p>
-            <div className="bg-white/50 p-2 rounded text-[11px] font-mono break-all">
-              Current URL: {window.location.href}<br/>
-              Protocol: {window.location.protocol}<br/>
-              isSecureContext: {String(window.isSecureContext)}
-            </div>
-            <p className="mt-3 text-xs opacity-75 italic">Tip: Use <b>localhost</b> or deploy to Cloudflare for HTTPS.</p>
+        {/* STATUS TILES */}
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 text-center">
+            <span className="block text-[9px] font-black text-slate-300 uppercase tracking-widest mb-1">Status</span>
+            <span className={`text-[11px] font-black px-2 py-0.5 rounded-full ${
+              permission === 'granted' ? 'bg-emerald-100 text-emerald-700' : 
+              permission === 'denied' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-500'
+            }`}>
+              {permission.toUpperCase()}
+            </span>
           </div>
-        )}
-
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
-          <div className="flex flex-col space-y-3 mb-6">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-500">Permission Status</span>
-              <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                permission === 'granted' ? 'bg-green-100 text-green-700' : 
-                permission === 'denied' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
-              }`}>
-                {permission}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-500">Service Worker</span>
-              <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                swActive ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-400'
-              }`}>
-                {swActive ? 'Active' : 'Missing'}
-              </span>
-            </div>
+          <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 text-center">
+            <span className="block text-[9px] font-black text-slate-300 uppercase tracking-widest mb-1">Engine</span>
+            <span className={`text-[11px] font-black px-2 py-0.5 rounded-full ${
+              swActive ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'
+            }`}>
+              {swActive ? 'SW READY' : 'BROWSER ONLY'}
+            </span>
           </div>
-
-          {permission !== 'granted' ? (
-            <button
-              onClick={requestPermission}
-              disabled={!isSecure}
-              className={`w-full py-3 bg-blue-600 text-white rounded-xl font-semibold transition-all active:scale-95 shadow-md shadow-blue-100 ${!isSecure ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
-            >
-              Enable Notifications
-            </button>
-          ) : (
-            <form onSubmit={handleSendCustom} className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-tight">Title</label>
-                <input 
-                  type="text" 
-                  value={customTitle}
-                  onChange={(e) => setCustomTitle(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
-                  required
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-tight">Body</label>
-                <textarea 
-                  value={customBody}
-                  onChange={(e) => setCustomBody(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all resize-none text-sm"
-                  rows={2}
-                  required
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={!isSecure}
-                className={`w-full py-3 bg-blue-600 text-white rounded-xl font-semibold transition-all active:scale-95 shadow-md shadow-blue-100 flex items-center justify-center space-x-2 ${!isSecure ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
-              >
-                <span>Fire Notification</span>
-              </button>
-            </form>
-          )}
         </div>
 
-        {errorMessage && (
-          <div className="mt-4 p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm flex items-start space-x-3 animate-pulse">
-             <svg className="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-             </svg>
-             <span>{errorMessage}</span>
-          </div>
-        )}
+        {/* MAIN CONTROLS */}
+        <main className="space-y-4">
+          {permission !== 'granted' ? (
+            <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 text-center">
+              <p className="text-sm text-slate-500 mb-6 font-medium">Notifications must be enabled to test push functionality.</p>
+              <button
+                onClick={requestPermission}
+                disabled={permission === 'denied'}
+                className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black text-lg shadow-xl shadow-blue-100 active:scale-95 transition-all disabled:opacity-50"
+              >
+                {permission === 'denied' ? 'System Blocked' : 'Enable Notifications'}
+              </button>
+              {permission === 'denied' && (
+                <p className="mt-4 text-[10px] text-rose-500 font-bold leading-relaxed">
+                  You denied permissions. Reset them in your browser settings (usually the lock icon in the URL bar).
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 space-y-5">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-300 uppercase tracking-widest ml-1">Title</label>
+                  <input 
+                    type="text" 
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-blue-500/10 transition-all"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-300 uppercase tracking-widest ml-1">Message Body</label>
+                  <textarea 
+                    value={body}
+                    onChange={(e) => setBody(e.target.value)}
+                    className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-medium focus:ring-2 focus:ring-blue-500/10 resize-none transition-all"
+                    rows={2}
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => triggerNotification(0)}
+                  className="w-full py-5 bg-blue-600 text-white rounded-[2rem] font-black text-lg shadow-xl shadow-blue-200 active:scale-[0.97] transition-all"
+                >
+                  Send Now
+                </button>
+                <button
+                  onClick={() => triggerNotification(5)}
+                  disabled={isSimulating}
+                  className="w-full py-4 bg-white text-blue-600 border-2 border-blue-50 rounded-[2rem] font-black text-sm active:scale-[0.97] transition-all disabled:opacity-50"
+                >
+                  {isSimulating ? 'Sending in 5s...' : 'Test Background (5s Delay)'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!swActive && permission === 'granted' && (
+            <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl text-[10px] font-bold text-amber-700 leading-relaxed text-center">
+              Service Worker inactive. This is normal in preview environments. Notifications will still work while the app is open.
+            </div>
+          )}
+
+          {errorMessage && (
+            <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl text-rose-600 text-xs font-bold text-center">
+              {errorMessage}
+            </div>
+          )}
+        </main>
 
         <HistoryList 
           history={history} 
           onClear={() => setHistory([])} 
         />
 
-        <footer className="mt-12 text-center text-gray-400 text-[10px] leading-relaxed px-6">
-          <p>Cloudflare Pages Deployment Ready. Browsers require HTTPS or Localhost for Notifications.</p>
+        <footer className="mt-12 text-center px-8">
+          <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.4em] mb-2">
+            {isSecure ? 'Secure Context Verified' : 'Insecure Connection'}
+          </p>
+          <p className="text-[8px] text-slate-300 font-medium leading-relaxed">
+            Note: "Origin Mismatch" is a browser security feature. In production, ensure sw.js is on your domain.
+          </p>
         </footer>
       </div>
     </div>

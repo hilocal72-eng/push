@@ -1,7 +1,7 @@
 
 {
-  "name": "PushNotify Tester",
-  "description": "A clean, modern application for testing browser notifications manually.",
+  "name": "Push Lab Mobile",
+  "description": "Simple mobile app for testing browser push notifications.",
   "requestFramePermissions": [
     "notifications"
   ]
