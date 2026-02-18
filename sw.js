@@ -1,8 +1,7 @@
 
 /* 
   SIMPLE PUSH LAB SERVICE WORKER 
-  Note: Access-Control-Allow-Origin headers must be set by your server (e.g. Cloudflare)
-  when serving this file if you intend to register it across different subdomains.
+  Note: This file must be hosted on the same origin as the page.
 */
 
 self.addEventListener('install', (event) => {
@@ -13,6 +12,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(clients.claim());
 });
 
+// Handle incoming push events from a server (if implemented)
 self.addEventListener('push', (event) => {
   let payload = { 
     title: 'Push Lab Alert', 
@@ -37,10 +37,7 @@ self.addEventListener('push', (event) => {
     data: {
       url: self.location.origin,
       timestamp: Date.now()
-    },
-    actions: [
-      { action: 'open', title: 'Open App' }
-    ]
+    }
   };
 
   event.waitUntil(
@@ -48,6 +45,7 @@ self.addEventListener('push', (event) => {
   );
 });
 
+// Handle clicking on the notification
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   

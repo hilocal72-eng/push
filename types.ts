@@ -13,5 +13,13 @@ export interface HistoryItem {
   timestamp: Date;
   title: string;
   body: string;
-  type: 'local' | 'simulated';
+  type: 'local' | 'remote';
+}
+
+export interface PushSubscriptionData {
+  endpoint: string;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
 }

@@ -22,16 +22,20 @@
     <div id="root"></div>
     <script>
       // Service Worker Registration
-      // Note: This only works when hosted on the same origin (domain).
+      // Browsers enforce Same-Origin policy. If this app is in an iframe on a different domain,
+      // the following registration may be blocked by security settings.
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js', { scope: './' })
+          navigator.serviceWorker.register('./sw.js')
             .then(reg => {
-              console.log('SW registered on scope:', reg.scope);
+              console.log('[SW] Registered successfully.');
             })
             .catch(err => {
-              // In preview environments, origin mismatch is common and blocked by browser security.
-              console.warn('Service Worker registration skipped or blocked:', err.message);
+              if (err.name === 'SecurityError') {
+                console.warn('[SW] Registration blocked due to Origin Mismatch (Sandbox Iframe).');
+              } else {
+                console.error('[SW] Registration failed:', err);
+              }
             });
         });
       }
